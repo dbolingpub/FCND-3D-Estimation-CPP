@@ -2,14 +2,14 @@
 
 ![Quad Image](./misc/EstimationProjectHeadingDroneImage.png)
 
-The 3D Estimation project is the fourth project in the Udacity Flying Car Nanodegree. In this project, our goal is to implement an estimator using an Extended Kalman Filter (EKF) to fuse noisy muliple sources of sensor data (GPS, magnetometer, IMU) from a simulated quadrotor to estimate the vehicle's state in 3 dimensions.
+The 3D Estimation project is the fourth project in the Udacity Flying Car Nanodegree. In this project, our goal was to implement an estimator using an Extended Kalman Filter (EKF) to fuse multiple sources of sensor data (GPS, magnetometer, IMU) from a simulated quadrotor to estimate the vehicle's state in 3 dimensions.
 
-Sensors will be used to measure the following:
+The following sensors will be used:
 * GPS: 3D position, 3D velocity
 * IMU (accelerometer and gyroscope): 3D acceleration, angular rotation rates
 * Magnetometer: heading (yaw angle)
 
-The Extended Kalman Filter will be supplemented by a complementary filter that will be used to track the attitude in X/Y.
+The Extended Kalman Filter will be supplemented by a complementary filter that will be used to track the Roll and Pitch angles.
 
 The framework, mathematical formulas and pseudocode for the EKF and Complementary Filter implementation are largely based on the paper <i>Estimation for Quadrotors</i>, by Stephanie Tellex, Andy Brown and Sergei Lupashin, cited as ref [1]. The starter code in this repository was forked from the upstream repository(https://github.com/udacity/FCND-Estimation-Cpp) which is credited to Sergei Lupashin and Fotokite. 
 
