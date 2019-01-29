@@ -329,6 +329,7 @@ PASS: ABS(Quad.Est.E.Pos) was less than 1.000000 for at least 20.000000 seconds
 ```
 
 <br/>
+
 ### References
 
 [1] Stephanie Tellex, Andy Brown, Sergei Lupashin. Estimation for Quadrotors. Accessed January 26, 2019. https://www.overleaf.com/read/vymfngphcccj.
