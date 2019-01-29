@@ -319,7 +319,7 @@ I ran several iterations and observed the flight paths to select the best one. A
 ![Step 6: Flight Test V4](./misc/Step6_TestV4Result.png)
 <br/>Flight Test V4
 
-After working to tune the parameters, I a was able to achieve a reasonable level of accuracy with my flight.
+After working to tune the parameters, I was able to achieve a reasonable level of accuracy with my flight.
 
 Upon completion, I received the following feedback:
 
