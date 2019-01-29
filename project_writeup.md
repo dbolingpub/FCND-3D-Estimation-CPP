@@ -302,22 +302,22 @@ I ran several iterations and observed the flight paths to select the best one. A
 <br/>
 
 ![Step 6: Flight Test V1](./misc/Step6_TestV1Result.png)
-Flight Test V1
+<br/>Flight Test V1
 
 <br/>
 
 ![Step 6: Flight Test V2](./misc/Step6_TestV2Result.png)
-Flight Test V2
+<br/>Flight Test V2
 
 <br/>
 
 ![Step 6: Flight Test V3](./misc/Step6_TestV3Result.png)
-Flight Test V3
+<br/>Flight Test V3
 
 <br/>
 
 ![Step 6: Flight Test V4](./misc/Step6_TestV4Result.png)
-Flight Test V4
+<br/>Flight Test V4
 
 After working to tune the parameters, I a was able to achieve a reasonable level of accuracy with my flight.
 
