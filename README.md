@@ -17,13 +17,9 @@ The framework, mathematical formulas and pseudocode for the EKF and Complementar
 
 _Note: The image above was provided by the course_
 
-<br/>
-
 ## Project Setup
 
-In order to get this project to run on your machine, follow the Setup section in the original [README](./README_FromParentRepo.md) from the [parent repo](https://github.com/udacity/FCND-Estimation-CPP). 
-
-<br/>
+In order to get this project to run on your machine, follow the Setup section in the original [README](./README_FromParentRepo.md) from the [parent repo](https://github.com/udacity/FCND-Estimation-CPP).
 
 ## Project Details
 
