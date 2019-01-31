@@ -21,7 +21,7 @@ _Note: The image above was provided by the course_
 
 ## Project Setup
 
-In order to get this project to run on your machine, follow the Development Guide Setup section  in the original [README](./README_FromParentRepo.md) from the [parent repo](https://github.com/udacity/FCND-Estimation-CPP). 
+In order to get this project to run on your machine, follow the Setup section in the original [README](./README_FromParentRepo.md) from the [parent repo](https://github.com/udacity/FCND-Estimation-CPP). 
 
 <br/>
 
