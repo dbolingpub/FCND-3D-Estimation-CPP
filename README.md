@@ -1,4 +1,5 @@
-## Project: 3D Estimation
+# Flying Car Nanodegree
+## 3D Estimation Project
 
 ![Quad Image](./misc/EstimationProjectHeadingDroneImage.png)
 
