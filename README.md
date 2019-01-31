@@ -1,4 +1,4 @@
-## Flying Car 3D Estimation
+## Flying Car: 3D Estimation
 
 ![Quad Image](./misc/EstimationProjectHeadingDroneImage.png)
 
