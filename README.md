@@ -1,8 +1,8 @@
 # Flying Car: 3D Estimation
 
-## Overview
-
 ![Quad Image](./misc/EstimationProjectHeadingDroneImage.png)
+
+## Overview
 
 The 3D Estimation project is the fourth project in the Udacity Flying Car Nanodegree. In this project, our goal was to implement an estimator using an Extended Kalman Filter (EKF) to fuse multiple sources of sensor data (GPS, magnetometer, IMU) from a simulated quadrotor to estimate the vehicle's state in 3 dimensions.
 
