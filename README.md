@@ -1,242 +1,335 @@
-# Estimation Project #
+## Project: 3D Estimation
 
-Welcome to the estimation project.  In this project, you will be developing the estimation portion of the controller used in the CPP simulator.  By the end of the project, your simulated quad will be flying with your estimator and your custom controller (from the previous project)!
+![Quad Image](./misc/EstimationProjectHeadingDroneImage.png)
 
-This README is broken down into the following sections:
+The 3D Estimation project is the fourth project in the Udacity Flying Car Nanodegree. In this project, our goal was to implement an estimator using an Extended Kalman Filter (EKF) to fuse multiple sources of sensor data (GPS, magnetometer, IMU) from a simulated quadrotor to estimate the vehicle's state in 3 dimensions.
 
- - [Setup](#setup) - the environment and code setup required to get started and a brief overview of the project structure
- - [The Tasks](#the-tasks) - the tasks you will need to complete for the project
- - [Tips and Tricks](#tips-and-tricks) - some additional tips and tricks you may find useful along the way
- - [Submission](#submission) - overview of the requirements for your project submission
+The following sensors will be used:
+* GPS: 3D position, 3D velocity
+* IMU (accelerometer and gyroscope): 3D acceleration, angular rotation rates
+* Magnetometer: heading (yaw angle)
 
+The Extended Kalman Filter will be supplemented by a complementary filter that will be used to track the Roll and Pitch angles.
 
-## Setup ##
+The framework, mathematical formulas and pseudocode for the EKF and Complementary Filter implementation are largely based on the paper <i>Estimation for Quadrotors</i>, by Stephanie Tellex, Andy Brown and Sergei Lupashin, cited as ref [1]. The starter code in this repository was forked from the upstream repository(https://github.com/udacity/FCND-Estimation-Cpp) which is credited to Sergei Lupashin and Fotokite. 
 
-This project will continue to use the C++ development environment you set up in the Controls C++ project.
+*Note: The image above was provided by the course*
 
- 1. Clone the repository
- ```
- git clone https://github.com/udacity/FCND-Estimation-CPP.git
- ```
+---
 
- 2. Import the code into your IDE like done in the [Controls C++ project](https://github.com/udacity/FCND-Controls-CPP#development-environment-setup)
- 
- 3. You should now be able to compile and run the estimation simulator just as you did in the controls project
+### Implement Estimator
 
+#### 1. Determine the standard deviation of the measurement noise of both GPS X data and Accelerometer X data.
 
-### Project Structure ###
+In this step, we run the Sensor Noise scenario so that we can collect data on the GPS and IMUs Accelerometer. Then, we determine the standard deviation. 
 
-For this project, you will be interacting with a few more files than before.
-
- - The EKF is already partially implemented for you in `QuadEstimatorEKF.cpp`
-
- - Parameters for tuning the EKF are in the parameter file `QuadEstimatorEKF.txt`
-
- - When you turn on various sensors (the scenarios configure them, e.g. `Quad.Sensors += SimIMU, SimMag, SimGPS`), additional sensor plots will become available to see what the simulated sensors measure.
-
- - The EKF implementation exposes both the estimated state and a number of additional variables. In particular:
-
-   - `Quad.Est.E.X` is the error in estimated X position from true value.  More generally, the variables in `<vehicle>.Est.E.*` are relative errors, though some are combined errors (e.g. MaxEuler).
-
-   - `Quad.Est.S.X` is the estimated standard deviation of the X state (that is, the square root of the appropriate diagonal variable in the covariance matrix). More generally, the variables in `<vehicle>.Est.S.*` are standard deviations calculated from the estimator state covariance matrix.
-
-   - `Quad.Est.D` contains miscellaneous additional debug variables useful in diagnosing the filter. You may or might not find these useful but they were helpful to us in verifying the filter and may give you some ideas if you hit a block.
-
-
-#### `config` Directory ####
-
-In the `config` directory, in addition to finding the configuration files for your controller and your estimator, you will also see configuration files for each of the simulations.  For this project, you will be working with simulations 06 through 11 and you may find it insightful to take a look at the configuration for the simulation.
-
-As an example, if we look through the configuration file for scenario 07, we see the following parameters controlling the sensor:
+The collected GPS.X data was logged to the ./config/Graph1.txt file. A sample of the data logged follows:
 
 ```
-# Sensors
-Quad.Sensors = SimIMU
-# use a perfect IMU
-SimIMU.AccelStd = 0,0,0
-SimIMU.GyroStd = 0,0,0
+time, Quad.GPS.X
+0.105000,-0.372319
+0.205000,0.639987
+0.305000,-0.736634
+0.404998,0.869336
+0.504997,0.180194
+0.604996,-0.945330
+0.704994,0.887752
+0.804993,-0.259940
 ```
 
-This configuration tells us that the simulator is only using an IMU and the sensor data will have no noise.  You will notice that for each simulator these parameters will change slightly as additional sensors are being used and the noise behavior of the sensors change.
+The collected IMU.Accel.X data was logged to the ./config/Graph2.txt file. A sample of the data follows:
 
-
-## The Tasks ##
-
-Once again, you will be building up your estimator in pieces.  At each step, there will be a set of success criteria that will be displayed both in the plots and in the terminal output to help you along the way.
-
-Project outline:
-
- - [Step 1: Sensor Noise](#step-1-sensor-noise)
- - [Step 2: Attitude Estimation](#step-2-attitude-estimation)
- - [Step 3: Prediction Step](#step-3-prediction-step)
- - [Step 4: Magnetometer Update](#step-4-magnetometer-update)
- - [Step 5: Closed Loop + GPS Update](#step-5-closed-loop--gps-update)
- - [Step 6: Adding Your Controller](#step-6-adding-your-controller)
-
-
-
-### Step 1: Sensor Noise ###
-
-For the controls project, the simulator was working with a perfect set of sensors, meaning none of the sensors had any noise.  The first step to adding additional realism to the problem, and developing an estimator, is adding noise to the quad's sensors.  For the first step, you will collect some simulated noisy sensor data and estimate the standard deviation of the quad's sensor.
-
-1. Run the simulator in the same way as you have before
-
-2. Choose scenario `06_NoisySensors`.  In this simulation, the interest is to record some sensor data on a static quad, so you will not see the quad move.  You will see two plots at the bottom, one for GPS X position and one for The accelerometer's x measurement.  The dashed lines are a visualization of a single standard deviation from 0 for each signal. The standard deviations are initially set to arbitrary values (after processing the data in the next step, you will be adjusting these values).  If they were set correctly, we should see ~68% of the measurement points fall into the +/- 1 sigma bound.  When you run this scenario, the graphs you see will be recorded to the following csv files with headers: `config/log/Graph1.txt` (GPS X data) and `config/log/Graph2.txt` (Accelerometer X data).
-
-3. Process the logged files to figure out the standard deviation of the the GPS X signal and the IMU Accelerometer X signal.
-
-4. Plug in your result into the top of `config/6_Sensornoise.txt`.  Specially, set the values for `MeasuredStdDev_GPSPosXY` and `MeasuredStdDev_AccelXY` to be the values you have calculated.
-
-5. Run the simulator. If your values are correct, the dashed lines in the simulation will eventually turn green, indicating you’re capturing approx 68% of the respective measurements (which is what we expect within +/- 1 sigma bound for a Gaussian noise model)
-
-***Success criteria:*** *Your standard deviations should accurately capture the value of approximately 68% of the respective measurements.*
-
-NOTE: Your answer should match the settings in `SimulatedSensors.txt`, where you can also grab the simulated noise parameters for all the other sensors.
-
-
-### Step 2: Attitude Estimation ###
-
-Now let's look at the first step to our state estimation: including information from our IMU.  In this step, you will be improving the complementary filter-type attitude filter with a better rate gyro attitude integration scheme.
-
-1. Run scenario `07_AttitudeEstimation`.  For this simulation, the only sensor used is the IMU and noise levels are set to 0 (see `config/07_AttitudeEstimation.txt` for all the settings for this simulation).  There are two plots visible in this simulation.
-   - The top graph is showing errors in each of the estimated Euler angles.
-   - The bottom shows the true Euler angles and the estimates.
-Observe that there’s quite a bit of error in attitude estimation.
-
-2. In `QuadEstimatorEKF.cpp`, you will see the function `UpdateFromIMU()` contains a complementary filter-type attitude filter.  To reduce the errors in the estimated attitude (Euler Angles), implement a better rate gyro attitude integration scheme.  You should be able to reduce the attitude errors to get within 0.1 rad for each of the Euler angles, as shown in the screenshot below.
-
-![attitude example](images/attitude-screenshot.png)
-
-In the screenshot above the attitude estimation using linear scheme (left) and using the improved nonlinear scheme (right). Note that Y axis on error is much greater on left.
-
-***Success criteria:*** *Your attitude estimator needs to get within 0.1 rad for each of the Euler angles for at least 3 seconds.*
-
-**Hint: see section 7.1.2 of [Estimation for Quadrotors](https://www.overleaf.com/read/vymfngphcccj) for a refresher on a good non-linear complimentary filter for attitude using quaternions.**
-
-
-### Step 3: Prediction Step ###
-
-In this next step you will be implementing the prediction step of your filter.
-
-
-1. Run scenario `08_PredictState`.  This scenario is configured to use a perfect IMU (only an IMU). Due to the sensitivity of double-integration to attitude errors, we've made the accelerometer update very insignificant (`QuadEstimatorEKF.attitudeTau = 100`).  The plots on this simulation show element of your estimated state and that of the true state.  At the moment you should see that your estimated state does not follow the true state.
-
-2. In `QuadEstimatorEKF.cpp`, implement the state prediction step in the `PredictState()` functon. If you do it correctly, when you run scenario `08_PredictState` you should see the estimator state track the actual state, with only reasonably slow drift, as shown in the figure below:
-
-![predict drift](images/predict-slow-drift.png)
-
-3. Now let's introduce a realistic IMU, one with noise.  Run scenario `09_PredictionCov`. You will see a small fleet of quadcopter all using your prediction code to integrate forward. You will see two plots:
-   - The top graph shows 10 (prediction-only) position X estimates
-   - The bottom graph shows 10 (prediction-only) velocity estimates
-You will notice however that the estimated covariance (white bounds) currently do not capture the growing errors.
-
-4. In `QuadEstimatorEKF.cpp`, calculate the partial derivative of the body-to-global rotation matrix in the function `GetRbgPrime()`.  Once you have that function implement, implement the rest of the prediction step (predict the state covariance forward) in `Predict()`.
-
-**Hint: see section 7.2 of [Estimation for Quadrotors](https://www.overleaf.com/read/vymfngphcccj) for a refresher on the the transition model and the partial derivatives you may need**
-
-**Hint: When it comes to writing the function for GetRbgPrime, make sure to triple check you've set all the correct parts of the matrix.**
-
-**Hint: recall that the control input is the acceleration!**
-
-5. Run your covariance prediction and tune the `QPosXYStd` and the `QVelXYStd` process parameters in `QuadEstimatorEKF.txt` to try to capture the magnitude of the error you see. Note that as error grows our simplified model will not capture the real error dynamics (for example, specifically, coming from attitude errors), therefore  try to make it look reasonable only for a relatively short prediction period (the scenario is set for one second).  A good solution looks as follows:
-
-![good covariance](images/predict-good-cov.png)
-
-Looking at this result, you can see that in the first part of the plot, our covariance (the white line) grows very much like the data.
-
-If we look at an example with a `QPosXYStd` that is much too high (shown below), we can see that the covariance no longer grows in the same way as the data.
-
-![bad x covariance](images/bad-x-sigma.PNG)
-
-Another set of bad examples is shown below for having a `QVelXYStd` too large (first) and too small (second).  As you can see, once again, our covariances in these cases no longer model the data well.
-
-![bad vx cov large](images/bad-vx-sigma.PNG)
-
-![bad vx cov small](images/bad-vx-sigma-low.PNG)
-
-***Success criteria:*** *This step doesn't have any specific measurable criteria being checked.*
-
-
-### Step 4: Magnetometer Update ###
-
-Up until now we've only used the accelerometer and gyro for our state estimation.  In this step, you will be adding the information from the magnetometer to improve your filter's performance in estimating the vehicle's heading.
-
-1. Run scenario `10_MagUpdate`.  This scenario uses a realistic IMU, but the magnetometer update hasn’t been implemented yet. As a result, you will notice that the estimate yaw is drifting away from the real value (and the estimated standard deviation is also increasing).  Note that in this case the plot is showing you the estimated yaw error (`quad.est.e.yaw`), which is drifting away from zero as the simulation runs.  You should also see the estimated standard deviation of that state (white boundary) is also increasing.
-
-2. Tune the parameter `QYawStd` (`QuadEstimatorEKF.txt`) for the QuadEstimatorEKF so that it approximately captures the magnitude of the drift, as demonstrated here:
-
-![mag drift](images/mag-drift.png)
-
-3. Implement magnetometer update in the function `UpdateFromMag()`.  Once completed, you should see a resulting plot similar to this one:
-
-![mag good](images/mag-good-solution.png)
-
-***Success criteria:*** *Your goal is to both have an estimated standard deviation that accurately captures the error and maintain an error of less than 0.1rad in heading for at least 10 seconds of the simulation.*
-
-**Hint: after implementing the magnetometer update, you may have to once again tune the parameter `QYawStd` to better balance between the long term drift and short-time noise from the magnetometer.**
-
-**Hint: see section 7.3.2 of [Estimation for Quadrotors](https://www.overleaf.com/read/vymfngphcccj) for a refresher on the magnetometer update.**
-
-
-### Step 5: Closed Loop + GPS Update ###
-
-1. Run scenario `11_GPSUpdate`.  At the moment this scenario is using both an ideal estimator and and ideal IMU.  Even with these ideal elements, watch the position and velocity errors (bottom right). As you see they are drifting away, since GPS update is not yet implemented.
-
-2. Let's change to using your estimator by setting `Quad.UseIdealEstimator` to 0 in `config/11_GPSUpdate.txt`.  Rerun the scenario to get an idea of how well your estimator work with an ideal IMU.
-
-3. Now repeat with realistic IMU by commenting out these lines in `config/11_GPSUpdate.txt`:
 ```
-#SimIMU.AccelStd = 0,0,0
-#SimIMU.GyroStd = 0,0,0
+time, Quad.IMU.AX
+0.005000,0.552092
+0.010000,0.073913
+0.015000,0.523375
+0.020000,-0.426419
+0.025000,0.916424
+0.030000,-0.296237
+0.035000,0.182526
+0.040000,-0.569616
 ```
 
-4. Tune the process noise model in `QuadEstimatorEKF.txt` to try to approximately capture the error you see with the estimated uncertainty (standard deviation) of the filter.
+To get the standard deviation for both sensors, I pasted the data into an Excel spreadsheet and used a formula to estimate the standard deviation.
 
-5. Implement the EKF GPS Update in the function `UpdateFromGPS()`.
+The resulting settings for MeasuredStdDev_GPSPosXY and MeasuredStdDev_AccelXY were made in the 06_SensorNoise.txt file. For the results of this test, refer to `Flight Evaluation: Step 1. Sensor Noise` later in this writeup.
 
-6. Now once again re-run the simulation.  Your objective is to complete the entire simulation cycle with estimated position error of < 1m (you’ll see a green box over the bottom graph if you succeed).  You may want to try experimenting with the GPS update parameters to try and get better performance.
+#### 2. Implement a better rate gyro attitude integration scheme in the `UpdateFromIMU()` function.
 
-***Success criteria:*** *Your objective is to complete the entire simulation cycle with estimated position error of < 1m.*
+I used the `Quaternion` class and `IntegrateBodyRate()` method to integrate the body rates. Then, I converted back to Euler angles using `estAttitude.ToEulerRPY()`.
 
-**Hint: see section 7.3.1 of [Estimation for Quadrotors](https://www.overleaf.com/read/vymfngphcccj) for a refresher on the GPS update.**
+```c++
+Quaternion<float> estAttitude = Quaternion<float>::FromEuler123_RPY(rollEst, pitchEst, ekfState(6));
+estAttitude.IntegrateBodyRate(V3D(gyro), dtIMU);
 
-At this point, congratulations on having a working estimator!
+V3F predictedAttitude = V3F(estAttitude.ToEulerRPY());
+predictedRoll = predictedAttitude.x;
+predictedPitch = predictedAttitude.y;
+ekfState(6) = predictedAttitude.z;
 
-### Step 6: Adding Your Controller ###
+// normalize yaw to [-pi, pi]
+if (ekfState(6) > F_PI) ekfState(6) -= 2.f*F_PI;
+if (ekfState(6) < -F_PI) ekfState(6) += 2.f*F_PI;
+```
 
-Up to this point, we have been working with a controller that has been relaxed to work with an estimated state instead of a real state.  So now, you will see how well your controller performs and de-tune your controller accordingly.
+#### 3. Implement all of the elements of the prediction step for the estimator.
 
-1. Replace `QuadController.cpp` with the controller you wrote in the last project.
+The overall process for implementing this step is as follows:
+* Implement `PredictState()`
+* Implement `GetRbgPrime()`
+* Implement `Predict()`
 
-2. Replace `QuadControlParams.txt` with the control parameters you came up with in the last project.
-
-3. Run scenario `11_GPSUpdate`. If your controller crashes immediately do not panic. Flying from an estimated state (even with ideal sensors) is very different from flying with ideal pose. You may need to de-tune your controller. Decrease the position and velocity gains (we’ve seen about 30% detuning being effective) to stabilize it.  Your goal is to once again complete the entire simulation cycle with an estimated position error of < 1m.
-
-**Hint: you may find it easiest to do your de-tuning as a 2 step process by reverting to ideal sensors and de-tuning under those conditions first.**
-
-***Success criteria:*** *Your objective is to complete the entire simulation cycle with estimated position error of < 1m.*
+Next, I will explain the implementation of each method above.
 
 
-## Tips and Tricks ##
+##### Implement `PredictState()`
 
- - When it comes to transposing matrices, `.transposeInPlace()` is the function you want to use to transpose a matrix
+In order to perform state transition the current state must be predicted forward in time according to the following formula defined as Equation 49 in Tellex [1]:
 
- - The [Estimation for Quadrotors](https://www.overleaf.com/read/vymfngphcccj) document contains a helpful mathematical breakdown of the core elements on your estimator
+![State Transition Function](./misc/StateTransitionFunction.png)
 
-## Submission ##
+In order to rotate from the body frame to the global frame (and avoid needing to use a rotation matrix as in the equation), I made use of the provided attitude Quaternion's `Rotate_BtoI()` method.
 
-For this project, you will need to submit:
+```c++
+V3F globalFrameAccel = attitude.Rotate_BtoI(accel);
+predictedState(0) = predictedState[0] + predictedState[3] * dt;
+predictedState(1) = predictedState[1] + predictedState[4] * dt;
+predictedState(2) = predictedState[2] + predictedState[5] * dt;
+predictedState(3) = predictedState[3] + globalFrameAccel.x * dt;
+predictedState(4) = predictedState[4] + globalFrameAccel.y * dt;
+predictedState(5) = predictedState[5] + (globalFrameAccel.z - (float)CONST_GRAVITY) * dt;
+```
 
- - a completed estimator that meets the performance criteria for each of the steps by submitting:
-   - `QuadEstimatorEKF.cpp`
-   - `config/QuadEstimatorEKF.txt`
+##### Implement `GetRbgPrime()`
 
- - a re-tuned controller that, in conjunction with your tuned estimator, is capable of meeting the criteria laid out in Step 6 by submitting:
-   - `QuadController.cpp`
-   - `config/QuadControlParams.txt`
+RbgPrime is the partial derivative of the R_bg rotation matrix with respect to yaw. The Rbg Prime matrix formula is defined as Equation 52 in Tellex et al. [1]:
 
- - a write up addressing all the points of the rubric
+![RBG Prime Formula](./misc/RbgPrimeFormula.png)
 
-## Authors ##
+Since the provided code already set all of the RbgPrime Matrix's values to zero, I just filled in the non-zero values.
 
-Thanks to Fotokite for the initial development of the project code and simulator.
+```c++
+float phi = roll;
+float theta = pitch;
+float psi = yaw;
+
+RbgPrime(0, 0) = -cos(theta) * sin(psi);
+RbgPrime(0, 1) = -sin(phi) * sin(theta) * sin(psi) - cos(phi) * cos(psi);
+RbgPrime(0, 2) = -cos(phi) * sin(theta) * sin(psi) + sin(phi) * cos(psi);
+RbgPrime(1, 0) = cos(theta) * cos(psi);
+RbgPrime(1, 1) = sin(phi) * sin(theta) * cos(psi) - cos(phi) * sin(psi);
+RbgPrime(1, 2) = cos(phi) * sin(theta) * cos(psi) + sin(phi) * sin(psi);
+```
+
+##### Implement `Predict()`
+
+Finally, to get the prediction, there are 2 steps:
+* Take the Jacobian to get g'
+* Then solve for ekfCov
+
+For the jacobian, the formula is defined as Equations 50, 51 in Tellex et al. [1]:
+
+![Predict Function Formula](./misc/PredictFunctionJacobian.png)
+
+Since gPrime was already set to the identity matrix, I just had to set the delta_t values and fill in for the matrix multiplications involving RbgPrime, the commanded accelerations and delta_t. 
+<br/>
+
+<i>Note: the quad's actual accelerations as measured by the accelerometer's specific acceleration (adjusted for gravity to derive actual accelerations) were used as a proxy for the control inputs (u_t).</i>
+
+```c++
+// set all delta_t values
+gPrime(0, 3) = gPrime(1, 4) = gPrime(2, 5) = dt;
+
+// u_t (control input)
+VectorXf ut(3);
+ut(0) = accel.x;
+ut(1) = accel.y;
+ut(2) = accel.z - (float)CONST_GRAVITY;
+
+gPrime(3, 6) = RbgPrime.row(0).dot(ut * dt);
+gPrime(4, 6) = RbgPrime.row(1).dot(ut * dt);
+gPrime(5, 6) = RbgPrime.row(2).dot(ut * dt);
+```
+
+Then, solve for ekfCov:
+
+```
+ekfCov = gPrime * (ekfCov * gPrime.transpose()) + Q;
+```
+
+#### 4. Implement the magnetometer update.
+
+First, set the hPrime matrix. It has previously been initialized to all zeros, so just add in the 1 at the end.
+
+```c++
+//h` = [0 0 0 0 0 0 1]
+hPrime(0, 6) = 1;
+```
+
+Then, set Yaw to the ekfState variable, then normalize.
+
+```c++
+zFromX(0) = ekfState(6);
+float magDiff = magYaw - zFromX(0);
+if (magDiff > F_PI) zFromX(0) += 2.f*F_PI;
+if (magDiff < -F_PI) zFromX(0) -= 2.f*F_PI;
+```	
+
+
+#### 5. Implement the GPS update.
+
+First, set the hPrime to be the identity matrix.
+
+```c++
+hPrime.setIdentity();
+```
+
+Then, update the state data in zFromX with the values in the current ekfState.
+
+```c++
+for (int i = 0; i < 6; ++i)
+	zFromX(i) = ekfState(i);
+```
+
+<br/>
+
+### Flight Evaluation
+
+#### 1. Meet the performance criteria of each step.
+
+For each step of the project, the final estimator should be able to successfully meet the performance criteria with the controller provided. The estimator's parameters should be properly adjusted to satisfy each of the performance criteria elements.
+
+The steps included:
+* Step 1: Sensor Noise 
+* Step 2: Attitude Estimation
+* Step 3: Prediction Step
+* Step 4: Magnetometer Update
+* Step 5: Closed Loop + GPS Update
+* Step 6: Adding Your Controller
+
+<br/>
+
+![Step 1 Complete](./misc/Scen6_SensorNoiseScreenshot.png)
+
+##### Step 1. Sensor Noise
+
+In this step, we needed to collect data regarding sensor noise in the GPS' x measurement and the IMUs accel.x measurement. Then, we input the standard deviation of the sensor noise for the GPS and IMU. If this was input correctly, then the scenario passed as shown in the simulator output:
+
+```
+Simulation #2 (../config/06_SensorNoise.txt)
+PASS: ABS(Quad.GPS.X-Quad.Pos.X) was less than MeasuredStdDev_GPSPosXY for 69% of the time
+PASS: ABS(Quad.IMU.AX-0.000000) was less than MeasuredStdDev_AccelXY for 69% of the time
+```
+
+<br/>
+
+![Step 2 Complete](./misc/Scen7_AttitudeEstimationScreenshot.png)
+
+##### Step 2. Attitude Estimation
+
+In this step, we will be improving the provided complementary filter for attitude estimation. Upon completion, I recieved the following feedback for the scenario:
+
+```
+Simulation #2 (../config/07_AttitudeEstimation.txt)
+PASS: ABS(Quad.Est.E.MaxEuler) was less than 0.100000 for at least 3.000000 seconds
+```
+
+##### Step 3. Prediction Step
+
+In this step, we will be implementing the prediction step of the EKF. There are no quantitative success criteria for this step, this is more of a qualitative check that our code is correct based on the shape of the graphs once we have completed this objective. See graph images for each part below.
+
+---
+
+![Step 3, Part 1 Screenshot](./misc/Step3_Part1_Screenshot.png)
+Step 3, Part 1: Predict State Screenshot
+
+<br/>
+
+![Step3, Part 2 Screenshot](./misc/Step3_Part2_Screenshot.png)
+Step 3, Part 2: Predict Covariance Screenshot
+
+<br/>
+
+---
+
+![Step 4 Complete](./misc/Step4MagUpdateScreenshot.png)
+##### Step 4. Magnetometer Update
+
+In this step, we implement the magnetometer sensor update within the EKF's measurement model to improve the performance of estimating the vehicle's heading.
+
+Upon completion, I recieved the following feedback:
+
+```
+Simulation #27 (../config/10_MagUpdate.txt)
+PASS: ABS(Quad.Est.E.Yaw) was less than 0.120000 for at least 10.000000 seconds
+PASS: ABS(Quad.Est.E.Yaw-0.000000) was less than Quad.Est.S.Yaw for 63% of the time
+```
+
+![Step 5 Complete](./misc/Step5GpsUpdateScreenshot.png)
+##### Step 5. Closed Loop + GPS Update
+
+In this step, we implement the GPS sensor update within the EKF's measurement model to improve the performance of estimating the vehicle's 3D position and 3D velocity.
+
+Upon completion, I received the following feedback for the scenario:
+
+```
+Simulation #6 (../config/11_GPSUpdate.txt)
+PASS: ABS(Quad.Est.E.Pos) was less than 1.000000 for at least 20.000000 seconds
+```
+
+![Step 6 WIP](./misc/Step6RollercoasterTrajectory.png)
+##### Step 6. Adding Your Controller
+
+Finally, I added my controller from the 3D Controls project and integrated it into the code. Initially, the quadrotor flew a pretty crazy trajectory (see screenshot above). Then, I began the work to detune the parameters.
+
+Proceed to the next section for the results.
+
+<br/>
+
+#### 2. De-tune your controller to successfully fly the final desired box trajectory with your estimator and realistic sensors.
+
+This task required that we detune our flight controller from the previous project to achieve a stable flight.
+
+First, we had to make our controller not use ideal estimator by changing the setting in the QuadControlParams.txt:
+
+```
+UseIdealEstimator=0
+```
+
+I ran several iterations and observed the flight paths to select the best one. All of the  flights depicted in the following screenshots resulted in a "PASS" output. However, I wanted to further explore the effect of changing different parameters on the resulting trajectory to see how much the end result could be improved.
+
+<br/>
+
+![Step 6: Flight Test V1](./misc/Step6_TestV1Result.png)
+<br/>Flight Test V1
+
+<br/>
+
+![Step 6: Flight Test V2](./misc/Step6_TestV2Result.png)
+<br/>Flight Test V2
+
+<br/>
+
+![Step 6: Flight Test V3](./misc/Step6_TestV3Result.png)
+<br/>Flight Test V3
+
+<br/>
+
+![Step 6: Flight Test V4](./misc/Step6_TestV4Result.png)
+<br/>Flight Test V4
+
+After working to tune the parameters, I was able to achieve a reasonable level of accuracy with my flight.
+
+Upon completion, I received the following feedback:
+
+```
+Simulation #247 (../config/11_GPSUpdate.txt)
+PASS: ABS(Quad.Est.E.Pos) was less than 1.000000 for at least 20.000000 seconds
+```
+
+<br/>
+
+### References
+
+[1] Stephanie Tellex, Andy Brown, Sergei Lupashin. Estimation for Quadrotors. Accessed January 26, 2019. https://www.overleaf.com/read/vymfngphcccj.
