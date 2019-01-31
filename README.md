@@ -1,4 +1,6 @@
-## Flying Car: 3D Estimation
+# Flying Car: 3D Estimation
+
+## Overview
 
 ![Quad Image](./misc/EstimationProjectHeadingDroneImage.png)
 
@@ -13,9 +15,17 @@ The Extended Kalman Filter will be supplemented by a complementary filter that w
 
 The framework, mathematical formulas and pseudocode for the EKF and Complementary Filter implementation are largely based on the paper <i>Estimation for Quadrotors</i>, by Stephanie Tellex, Andy Brown and Sergei Lupashin, cited as ref [1]. The starter code in this repository was forked from the upstream repository(https://github.com/udacity/FCND-Estimation-Cpp) which is credited to Sergei Lupashin and Fotokite. 
 
-*Note: The image above was provided by the course*
+_Note: The image above was provided by the course_
 
----
+<br/>
+
+## Project Setup
+
+In order to get this project to run on your machine, follow the Development Guide Setup section  in the original [README](./README_FromParentRepo.md) from the [parent repo](https://github.com/udacity/FCND-Estimation-CPP). 
+
+<br/>
+
+## Project Details
 
 ### Implement Estimator
 
